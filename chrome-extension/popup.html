@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>X Remarks</title>
+</head>
+<body>
+  <header>
+    <div class="title">推特备注 <span id="count" class="count"></span></div>
+    <button id="tab-json" class="ghost" type="button" title="直接编辑 JSON">{ }</button>
+  </header>
+
+  <!-- 列表视图 -->
+  <section id="view-list">
+    <div class="add-row">
+      <input id="new-handle" type="text" placeholder="@handle" autocomplete="off" spellcheck="false" />
+      <input id="new-note" type="text" placeholder="备注" autocomplete="off" spellcheck="false" />
+      <button id="add" type="button">添加</button>
+    </div>
+
+    <input id="search" type="search" placeholder="搜索 handle 或备注" autocomplete="off" />
+
+    <ul id="list"></ul>
+    <div id="empty" class="empty" hidden>没有匹配的备注</div>
+
+    <footer>
+      <button id="export" class="sec" type="button">导出文件</button>
+      <button id="import" class="sec" type="button">导入文件</button>
+      <button id="copy" class="sec" type="button">复制 JSON</button>
+      <input id="file" type="file" accept="application/json,.json" hidden />
+    </footer>
+  </section>
+
+  <!-- JSON 视图 -->
+  <section id="view-json" hidden>
+    <div class="tip">整份备注 JSON,可直接改。保存会<b>整体替换</b>现有数据。</div>
+    <textarea id="json" spellcheck="false"></textarea>
+    <footer>
+      <button id="json-save" type="button">保存导入</button>
+      <button id="json-cancel" class="sec" type="button">返回列表</button>
+    </footer>
+  </section>
+
+  <div id="toast"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

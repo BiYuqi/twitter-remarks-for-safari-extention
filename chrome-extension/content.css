@@ -1,0 +1,144 @@
+/* ============================================================
+ * X Remarks — 页面内样式
+ * 主题变量由 content.js 的 applyTheme() 写到 :root,跟随 X 的浅色/暗色
+ * 面板部分统一 !important,避免被 X 的全局 CSS 覆盖
+ * ============================================================ */
+
+/* ---- 「＋ 备注」按钮(个人主页无备注时) ---- */
+.xr-add-btn {
+  color: var(--xr-muted, #8899a6) !important;
+  border: 1px dashed var(--xr-muted, #8899a6) !important;
+  border-radius: 6px !important;
+  padding: 3px 10px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  display: inline-block !important;
+  line-height: 1.35 !important;
+  position: relative !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+  background: transparent !important;
+  margin: 0 !important;
+  font-family: inherit !important;
+  -webkit-appearance: none;
+  appearance: none;
+  user-select: none;
+}
+
+[data-xr-edit] {
+  transition: opacity .08s, transform .08s, filter .08s;
+}
+[data-xr-edit]:hover {
+  filter: brightness(1.12);
+}
+[data-xr-edit]:active {
+  opacity: .55 !important;
+  transform: scale(.95) !important;
+}
+
+/* ---- 编辑弹窗 ---- */
+#xr-edit {
+  position: fixed;
+  inset: 0;
+  background: var(--xr-overlay, rgba(0, 0, 0, .6));
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 100001;
+}
+
+#xr-edit .box {
+  background: var(--xr-bg, #fff);
+  color: var(--xr-fg, #1c1c1e);
+  width: 100%;
+  max-width: 420px;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--xr-border, transparent);
+  box-shadow: var(--xr-shadow, 0 12px 40px rgba(0, 0, 0, .2));
+  color-scheme: var(--xr-scheme, light);
+}
+
+#xr-edit .t {
+  font-size: 13px;
+  color: var(--xr-muted, rgba(60, 60, 67, .6));
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+#xr-edit input {
+  background: var(--xr-input, #f2f2f7) !important;
+  color: var(--xr-input-fg, #1c1c1e) !important;
+  border: 1px solid var(--xr-input-border, transparent) !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  font-size: 15px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  font-family: inherit !important;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#xr-edit input:focus {
+  border-color: var(--xr-accent, #007aff) !important;
+}
+
+#xr-edit .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#xr-edit .row button {
+  flex: 1 1 0 !important;
+  min-width: 88px;
+  padding: 10px 8px !important;
+  border: none !important;
+  border-radius: 11px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+  background: var(--xr-accent, #007aff) !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  font-family: inherit !important;
+  line-height: 1.2 !important;
+  cursor: pointer;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#xr-edit .row button:hover { filter: brightness(1.08); }
+#xr-edit .row button:active { opacity: .6; }
+#xr-edit .row button.sec {
+  background: var(--xr-sec, #f2f2f7) !important;
+  color: var(--xr-sec-fg, #007aff) !important;
+}
+
+/* ---- toast ---- */
+#xr-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 60px;
+  transform: translateX(-50%);
+  z-index: 100002;
+  background: var(--xr-toast-bg, rgba(28, 28, 30, .92));
+  color: var(--xr-toast-fg, #fff);
+  font-size: 14px;
+  backdrop-filter: blur(12px);
+  padding: 10px 18px;
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+  max-width: 80vw;
+  text-align: center;
+}
