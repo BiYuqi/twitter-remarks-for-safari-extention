@@ -8,10 +8,14 @@
 <body>
   <header>
     <div class="title">推特备注 <span id="count" class="count"></span></div>
-    <button id="tab-json" class="ghost" type="button" title="直接编辑 JSON">{ }</button>
+    <nav class="tabs">
+      <button type="button" data-tab="list" class="on">备注</button>
+      <button type="button" data-tab="rules">规则</button>
+      <button type="button" data-tab="settings">设置</button>
+    </nav>
   </header>
 
-  <!-- 列表视图 -->
+  <!-- 备注列表 -->
   <section id="view-list">
     <div class="add-row">
       <input id="new-handle" type="text" placeholder="@handle" autocomplete="off" spellcheck="false" />
@@ -19,30 +23,79 @@
       <button id="add" type="button">添加</button>
     </div>
 
-    <input id="search" type="search" placeholder="搜索 handle 或备注" autocomplete="off" />
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="搜索 handle 或备注" autocomplete="off" />
+      <button id="group" class="ghost" type="button" title="按备注文案分组">分组</button>
+    </div>
 
     <ul id="list"></ul>
     <div id="empty" class="empty" hidden>没有匹配的备注</div>
+  </section>
+
+  <!-- 规则 -->
+  <section id="view-rules" hidden>
+    <div class="tip">
+      备注文案命中关键词就套用这条规则的颜色;勾了「降噪」的,这类人的推文会按
+      <b>设置 → 降噪方式</b> 处理。<b>从上往下匹配,第一条命中的生效</b>,所以拉黑类要放前面。
+    </div>
+    <div id="rules"></div>
+    <footer>
+      <button id="rule-add" type="button">＋ 新增规则</button>
+      <button id="rule-reset" class="sec" type="button">恢复默认</button>
+    </footer>
+  </section>
+
+  <!-- 设置 -->
+  <section id="view-settings" hidden>
+    <div class="field">
+      <label for="noise-mode">降噪方式</label>
+      <select id="noise-mode">
+        <option value="off">关闭 —— 只标颜色</option>
+        <option value="dim">淡化 —— 变灰变淡,鼠标移上去恢复</option>
+        <option value="collapse">折叠 —— 收成一行,点开才看</option>
+        <option value="hide">隐藏 —— 整条不显示</option>
+      </select>
+    </div>
+
+    <div class="field" id="dim-field">
+      <label for="dim">淡化程度 <span id="dim-val" class="muted"></span></label>
+      <input id="dim" type="range" min="5" max="80" step="5" />
+    </div>
+
+    <label class="check">
+      <input id="hide-ads" type="checkbox" />
+      隐藏推广内容(信息流广告 + 推广趋势)
+    </label>
+
+    <div class="sep"></div>
+
+    <div class="tip">备份 —— 每次「整体替换」前自动存一份,保留最近 3 份</div>
+    <ul id="snaps" class="snaps"></ul>
+
+    <div class="sep"></div>
 
     <footer>
       <button id="export" class="sec" type="button">导出文件</button>
       <button id="import" class="sec" type="button">导入文件</button>
       <button id="copy" class="sec" type="button">复制 JSON</button>
+      <button id="to-json" class="sec" type="button" title="直接编辑 JSON">{ }</button>
       <input id="file" type="file" accept="application/json,.json" hidden />
     </footer>
   </section>
 
   <!-- JSON 视图 -->
   <section id="view-json" hidden>
-    <div class="tip">整份备注 JSON,可直接改。保存会<b>整体替换</b>现有数据。</div>
+    <div class="tip">整份数据的 JSON(含 <code>__settings</code>),可直接改。保存会<b>整体替换</b>现有数据,替换前会自动存一份备份。</div>
     <textarea id="json" spellcheck="false"></textarea>
     <footer>
       <button id="json-save" type="button">保存导入</button>
-      <button id="json-cancel" class="sec" type="button">返回列表</button>
+      <button id="json-cancel" class="sec" type="button">返回</button>
     </footer>
   </section>
 
   <div id="toast"></div>
+  <script src="defaults.js"></script>
+  <script src="rules.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

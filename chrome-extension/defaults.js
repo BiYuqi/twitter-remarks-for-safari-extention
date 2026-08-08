@@ -159,3 +159,37 @@ var XR_DEFAULT_REMARKS = {
 };
 
 if (typeof globalThis !== "undefined") globalThis.XR_DEFAULT_REMARKS = XR_DEFAULT_REMARKS;
+
+/* ============================================================
+ * 默认设置 —— 同样只在首次安装时种入,之后以 storage 里的 __settings 为准
+ *   noiseMode: off(关闭) | dim(淡化) | collapse(折叠) | hide(隐藏)
+ *   rules:     按顺序匹配,第一条命中的生效;match 是关键词数组,大小写不敏感
+ *              color 决定药丸颜色,noise 决定这类人的推文算不算噪音
+ * ============================================================ */
+var XR_DEFAULT_SETTINGS = {
+  noiseMode: 'dim',
+  dimOpacity: 0.3,
+  hideAds: true,
+  rules: [
+    {
+      name: '拉黑',
+      color: '#ff3b30',
+      noise: true,
+      match: ['避而远之', '割人', '骗子', '诈骗', '反指', '大割', '畜生', '小心']
+    },
+    {
+      name: '项目方',
+      color: '#8e8e93',
+      noise: false,
+      match: ['创始人', 'CEO', '项目方', '台子', '合伙人', 'dev', '开发']
+    },
+    {
+      name: '投研',
+      color: '#34c759',
+      noise: false,
+      match: ['投研', '研究', '分析', 'alpha', 'kol', '交易']
+    }
+  ]
+};
+
+if (typeof globalThis !== "undefined") globalThis.XR_DEFAULT_SETTINGS = XR_DEFAULT_SETTINGS;

@@ -142,3 +142,81 @@
   max-width: 80vw;
   text-align: center;
 }
+
+/* ============================================================
+ * 降噪:命中 noise 规则的作者
+ * 一律作用在 article 上 —— 隐藏外层 cell 会在虚拟列表里留下空洞,
+ * 让 article 塌成 0 高度,X 的 ResizeObserver 会自己把位置重排。
+ * ============================================================ */
+
+/* 淡化:鼠标移上去恢复,想看还是能看 */
+article.xr-dim {
+  opacity: var(--xr-dim, .32);
+  filter: grayscale(.55);
+  transition: opacity .15s, filter .15s;
+}
+article.xr-dim:hover {
+  opacity: 1;
+  filter: none;
+}
+
+/* 隐藏 */
+article.xr-hidden { display: none !important; }
+
+/* 折叠:藏起 X 自己的内容,只留我们那条 bar */
+article.xr-collapsed > * { display: none !important; }
+article.xr-collapsed > .xr-fold-bar { display: flex !important; }
+article.xr-collapsed {
+  padding: 0 !important;
+  border-bottom: none !important;
+}
+
+.xr-fold-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--xr-muted, #71767b);
+  cursor: pointer;
+  position: relative;
+  z-index: 9999;
+  user-select: none;
+}
+.xr-fold-bar:hover { background: rgba(127, 127, 127, .08); }
+.xr-fold-bar:active { opacity: .6; }
+.xr-fold-bar .h {
+  font-weight: 700;
+  color: var(--xr-fg, inherit);
+  flex: 0 0 auto;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xr-fold-bar .n {
+  flex: 0 1 auto;
+  min-width: 0;
+  background: var(--xr-accent, #007aff);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xr-fold-bar .x {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--xr-accent, #007aff);
+}
+
+/* ============================================================
+ * 推广内容:信息流里的推广推文外层挂着 placementTracking
+ * 同样只收内层,让 cell 自己塌下去
+ * ============================================================ */
+html.xr-hide-ads div[data-testid="placementTracking"] { display: none !important; }

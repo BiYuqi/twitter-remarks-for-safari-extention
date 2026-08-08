@@ -39,6 +39,7 @@
       persist();
     }
     rebuildIndex();
+    loadSettings();
   }
 
   function persist() {
@@ -53,19 +54,46 @@
     }
   }
 
-  /* ---------- 选项 ----------
-   * 目前没有启用的选项;保留读写口,以后加开关直接用。
-   * 存储键统一 __opt_ 前缀,不与 @备注 冲突。
+  /* ---------- 设置 ----------
+   * 存在 store 的 __settings 键里(不是单独的 storage key):
+   * 这样导出的 JSON 依然是一份扁平对象,和 iOS userscript 版互相导入不会丢东西 ——
+   * 那边只认 @ 开头的键,__settings 会被原样保留。
    */
-  const OPT_DEFAULTS = {};
+  const SETTINGS_KEY = '__settings';
+  let settings = {};
 
-  function getOpt(k) {
-    const v = store['__opt_' + k];
-    return v === undefined ? OPT_DEFAULTS[k] : !!v;
+  function loadSettings() {
+    const d = self.XR_DEFAULT_SETTINGS || {};
+    settings = Object.assign({}, d, store[SETTINGS_KEY] || {});
+    if (!Array.isArray(settings.rules)) settings.rules = d.rules || [];
+    ruleCache.clear();
   }
-  function setOpt(k, v) {
-    store['__opt_' + k] = !!v;
-    persist();
+
+  function applySettings() {
+    document.documentElement.classList.toggle('xr-hide-ads', !!settings.hideAds);
+    document.documentElement.style.setProperty(
+      '--xr-dim', String(settings.dimOpacity == null ? 0.32 : settings.dimOpacity)
+    );
+    // 推广趋势是用内联 display 收掉的,关掉开关得手动放回来(CSS 那部分自己会跟)
+    if (!settings.hideAds) {
+      document.querySelectorAll('div[data-testid="trend"]').forEach(function (el) {
+        if (el.style.display === 'none') el.style.display = '';
+      });
+    }
+  }
+
+  /* ---------- 规则:关键词 -> 颜色 / 是否算噪音 ----------
+   * 按顺序匹配,第一条命中的生效。备注文案是有限的几十种,匹配结果直接缓存,
+   * 滚动时不会反复做字符串查找。
+   */
+  const ruleCache = new Map();
+
+  function ruleFor(noteText) {
+    if (!noteText) return null;
+    if (ruleCache.has(noteText)) return ruleCache.get(noteText);
+    const hit = self.XR_ruleFor ? self.XR_ruleFor(noteText, settings.rules) : null;
+    ruleCache.set(noteText, hit);
+    return hit;
   }
 
   function getStyleFor(username) {
@@ -74,11 +102,15 @@
     const entry = store[key];
     const noteText = typeof entry === 'string' ? entry : (entry && entry.note);
     if (!noteText) return null;
+    const rule = ruleFor(noteText);
     return {
       text: noteText,
-      bg: (entry && entry.color) || store.__style_bgColor || 'var(--xr-accent,#007aff)',
+      // 单条自定义色 > 规则色 > 全局色 > 跟随主题
+      bg: (entry && entry.color) || (rule && rule.color) ||
+        store.__style_bgColor || 'var(--xr-accent,#007aff)',
       fontSize: (entry && entry.fontSize) || store.__style_fontSize || '12px',
-      radius: (entry && entry.borderRadius) || store.__style_borderRadius || '6px'
+      radius: (entry && entry.borderRadius) || store.__style_borderRadius || '6px',
+      noise: !!(rule && rule.noise)
     };
   }
 
@@ -105,6 +137,8 @@
       if (Date.now() - selfWriteAt < 400) return;   // 自己刚写的,跳过
       store = changes[STORAGE_KEY].newValue || {};
       rebuildIndex();
+      loadSettings();
+      applySettings();
       rerender();
     });
   }
@@ -205,7 +239,7 @@
     const findTarget = function (e) {
       const t = e.target;
       if (!t || !t.closest) return null;
-      return t.closest('[data-xr-edit]');
+      return t.closest('[data-xr-edit],[data-xr-fold]');
     };
 
     const ROOT = window;
@@ -223,7 +257,8 @@
       if (busy) return;
       busy = true;
       setTimeout(function () { busy = false; }, 500);
-      promptEdit(el.dataset.xrEdit);
+      if (el.dataset.xrFold !== undefined) expandArticle(el);
+      else promptEdit(el.dataset.xrEdit);
     }
 
     ['click', 'pointerup', 'touchend'].forEach(function (type) {
@@ -243,6 +278,7 @@
     el.addEventListener('click', function (e) {
       e.stopPropagation();
       if (window.__xrFire) window.__xrFire(el, e);
+      else if (el.dataset.xrFold !== undefined) expandArticle(el);
       else promptEdit(username);
     }, false);
   }
@@ -295,36 +331,92 @@
 
   /* ============================================================
    * 取 @handle
+   * 优先读链接的 href(/handle、/handle/status/123 都能取到):
+   * 比扫 span 快得多,而且不会被"显示名里写了 @xxx"的用户骗到 —— 扫 span
+   * 取的是最后一个 @ 开头的文本,那种用户会挂到错误的 handle 上。
+   * 个人主页的 UserName 区块里 handle 可能不是链接,所以保留扫 span 兜底。
    * ============================================================ */
-  function handleOf(block) {
-    let handle = null;
+
+  // X 的一级路径保留字,不是用户名
+  const RESERVED_PATHS = new Set([
+    'home', 'explore', 'notifications', 'messages', 'search', 'settings',
+    'compose', 'intent', 'hashtag', 'i', 'login', 'logout', 'signup',
+    'about', 'tos', 'privacy', 'download', 'account', 'topics', 'lists',
+    'bookmarks', 'jobs', 'premium_sign_up', 'share'
+  ]);
+
+  function handleFromHref(href) {
+    if (!href) return null;
+    const m = String(href).match(
+      /^(?:https?:\/\/(?:www\.)?(?:x|twitter)\.com)?\/([A-Za-z0-9_]{1,15})(?:[/?#]|$)/
+    );
+    if (!m) return null;
+    if (RESERVED_PATHS.has(m[1].toLowerCase())) return null;
+    return '@' + m[1];
+  }
+
+  // 扫 span 找 @handle 文本节点(兜底 + UserCell 定位插入点用)
+  function handleSpanOf(block) {
+    let found = null;
     block.querySelectorAll('span').forEach(function (s) {
       const t = (s.textContent || '').trim();
-      if (t.startsWith('@') && t.length > 1 && !/\s/.test(t)) handle = t;
+      if (t.startsWith('@') && t.length > 1 && !/\s/.test(t)) found = s;
     });
-    return handle;
+    return found;
+  }
+
+  function handleOf(block) {
+    const links = block.querySelectorAll('a[href]');
+    for (let i = 0; i < links.length; i++) {
+      const h = handleFromHref(links[i].getAttribute('href'));
+      if (h) return h;
+    }
+    const span = handleSpanOf(block);
+    return span ? (span.textContent || '').trim() : null;
   }
 
   /* ============================================================
-   * 时间线
+   * 插入位置
    * ============================================================ */
   // 向上找到第一个"纵向容器"(block 或 flex-column),把徽章作为其子节点插入,
-  // 这样徽章独占一整行,不会和用户名/时间抢同一 flex 行的宽度(否则名字被挤成省略号)
-  function findColumnSlot(block) {
+  // 这样徽章独占一整行,不会和用户名/时间抢同一 flex 行的宽度(否则名字被挤成省略号)。
+  //
+  // getComputedStyle 会强制样式重算,放在滚动热路径里每个徽章最多 10 次太贵。
+  // X 的 DOM 结构在同一种场景下是稳定的,所以按场景(timeline/usercell/…)缓存
+  // "要向上爬几层",命中后只做一次校验;结构变了校验会失败,自动退回全量扫描并重新缓存。
+  const slotDepthCache = new Map();
+
+  function isColumnSlot(parent, node) {
+    if (!parent || parent === document.body) return false;
+    let cs;
+    try { cs = getComputedStyle(parent); } catch (e) { return false; }
+    const disp = cs.display || '';
+    const isColumn =
+      disp === 'block' ||
+      ((disp.indexOf('flex') >= 0 || disp.indexOf('grid') >= 0) &&
+        (cs.flexDirection || '').indexOf('column') === 0);
+    // 该容器必须比当前分支宽,否则说明还在同一行里
+    return isColumn && parent.clientWidth > node.clientWidth * 0.9;
+  }
+
+  function findColumnSlot(block, ctx) {
+    // 快路径:用缓存的层数直接定位,只校验一次
+    const cached = ctx != null ? slotDepthCache.get(ctx) : undefined;
+    if (cached !== undefined) {
+      let node = block;
+      for (let i = 0; i < cached && node.parentElement; i++) node = node.parentElement;
+      const parent = node.parentElement;
+      if (isColumnSlot(parent, node)) return { parent: parent, before: node.nextSibling };
+      slotDepthCache.delete(ctx);   // 结构变了,作废重来
+    }
+
     let node = block;
     let depth = 0;
     while (node && node.parentElement && depth < 10) {
       const parent = node.parentElement;
       if (parent === document.body) break;
-      let cs;
-      try { cs = getComputedStyle(parent); } catch (e) { break; }
-      const disp = cs.display || '';
-      const isColumn =
-        disp === 'block' ||
-        ((disp.indexOf('flex') >= 0 || disp.indexOf('grid') >= 0) &&
-          (cs.flexDirection || '').indexOf('column') === 0);
-      // 该容器必须比当前分支宽,否则说明还在同一行里
-      if (isColumn && parent.clientWidth > node.clientWidth * 0.9) {
+      if (isColumnSlot(parent, node)) {
+        if (ctx != null) slotDepthCache.set(ctx, depth);
         return { parent: parent, before: node.nextSibling };
       }
       node = parent;
@@ -333,10 +425,10 @@
     return null;
   }
 
-  const badgeOwner = new WeakMap();   // User-Name 区块 -> 它的徽章节点
+  const badgeOwner = new WeakMap();   // 用户区块 -> 它的徽章节点
 
-  function insertTagRow(block, node) {
-    const slot = findColumnSlot(block);
+  function insertTagRow(block, node, ctx) {
+    const slot = findColumnSlot(block, ctx);
     if (slot) {
       slot.parent.insertBefore(node, slot.before);
       return true;
@@ -353,27 +445,135 @@
     return false;
   }
 
+  /* ============================================================
+   * 渲染:时间线 + 用户列表
+   * 根用 document 而不是 main —— 关注/粉丝列表、转发者列表这些是
+   * div[role="dialog"] 弹层,在 main 外面,只扫 main 会漏掉。
+   * ============================================================ */
+  /* ---------- 降噪:命中 noise 规则的作者,整条推文按设置处理 ----------
+   * 一律作用在 article 上,不碰外面的 cellInnerDiv:X 的虚拟列表用绝对定位摆放
+   * 每个 cell,直接隐藏 cell 会留下一个空洞;隐藏 article 让 cell 高度塌成 0,
+   * X 自己的 ResizeObserver 会把位置重排,空隙自然合上(广告拦截器也是这么干的)。
+   */
+  function clearNoise(article) {
+    article.classList.remove('xr-dim', 'xr-hidden', 'xr-collapsed');
+    const bar = article.querySelector(':scope > .xr-fold-bar');
+    if (bar) bar.remove();
+    delete article.dataset.xrNoise;
+  }
+
+  function makeFoldBar(handle, noteObj) {
+    const bar = document.createElement('div');
+    bar.className = 'xr-fold-bar';
+    bar.dataset.xrFold = handle;      // 委托靠这个属性识别
+
+    const h = document.createElement('span');
+    h.className = 'h';
+    h.textContent = handle;
+
+    const n = document.createElement('span');
+    n.className = 'n';
+    n.textContent = noteObj.text;
+    if (noteObj.bg) n.style.background = noteObj.bg;
+
+    const x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = '展开';
+
+    bar.append(h, n, x);
+    bindDirect(bar, handle);
+    return bar;
+  }
+
+  function applyNoise(block, handle, noteObj) {
+    const article = block.closest('article');
+    if (!article) return;
+    // 只对推文作者生效。引用推文里也有 User-Name,不能因为被引用的人上了黑名单
+    // 就把整条推文折叠掉 —— 作者的 User-Name 是 article 里的第一个。
+    if (article.querySelector('div[data-testid="User-Name"]') !== block) return;
+
+    clearNoise(article);   // 节点被回收复用时,先把上一位的处理撤干净
+
+    const mode = settings.noiseMode || 'off';
+    if (!noteObj || !noteObj.noise || mode === 'off') return;
+
+    article.dataset.xrNoise = handle;
+    if (mode === 'hide') { article.classList.add('xr-hidden'); return; }
+    if (mode === 'dim') { article.classList.add('xr-dim'); return; }
+    if (mode === 'collapse') {
+      article.classList.add('xr-collapsed');
+      article.appendChild(makeFoldBar(handle, noteObj));
+    }
+  }
+
+  // 兜底清理:article 被回收成了压根没有 User-Name 的东西(广告位、推荐模块…),
+  // decorate 不会再碰它,降噪状态就会赖着不走。只扫已降噪的那几个节点,很便宜。
+  function sweepNoise() {
+    document.querySelectorAll('article[data-xr-noise]').forEach(function (a) {
+      if (!a.querySelector('div[data-testid="User-Name"]')) clearNoise(a);
+    });
+  }
+
+  function expandArticle(el) {
+    const article = el.closest('article');
+    if (!article) return;
+    article.classList.remove('xr-collapsed');
+    const bar = article.querySelector(':scope > .xr-fold-bar');
+    if (bar) bar.remove();
+    // 留着 data-xr-noise,下次 rerender 还能被清理到
+  }
+
+  function decorate(block, ctx, anchorFn) {
+    const handle = handleOf(block);
+    if (!handle) return;
+    if (block.dataset.xrHandle === handle) return;
+
+    // 虚拟列表复用节点:先移除这个区块自己的旧徽章,否则会串号
+    const old = badgeOwner.get(block);
+    if (old && old.parentElement) old.remove();
+    badgeOwner.delete(block);
+
+    block.dataset.xrHandle = handle;
+
+    const noteObj = getStyleFor(handle);
+    // 注意:noteObj 为空也要走一遍,否则回收复用的节点会留着上一位的降噪状态
+    if (ctx === 'timeline') applyNoise(block, handle, noteObj);
+    if (!noteObj) return;
+
+    const anchor = (anchorFn && anchorFn(block)) || block;
+    const node = makeTagRow(handle, noteObj);
+    if (insertTagRow(anchor, node, ctx)) badgeOwner.set(block, node);
+  }
+
   function addNotesToTimeline() {
-    const main = document.querySelector('main');
-    if (!main) return;
+    document.querySelectorAll('div[data-testid="User-Name"]').forEach(function (block) {
+      decorate(block, 'timeline');
+    });
+  }
 
-    main.querySelectorAll('div[data-testid="User-Name"]').forEach(function (block) {
-      const handle = handleOf(block);
-      if (!handle) return;
-      if (block.dataset.xrHandle === handle) return;
+  /* ---------- 推广内容 ----------
+   * 信息流里的推广推文外层挂着 data-testid="placementTracking",纯 CSS 就能收掉
+   * (见 content.css,由 html.xr-hide-ads 控制),这里只处理需要看文字才能认出来的
+   * 推广趋势。趋势一共十来个节点,每轮扫一遍不值一提。
+   */
+  const PROMO_TEXT = /promoted|推广|廣告/i;
 
-      // 虚拟列表复用节点:先移除这个区块自己的旧徽章,否则会串号
-      const old = badgeOwner.get(block);
-      if (old && old.parentElement) old.remove();
-      badgeOwner.delete(block);
+  function hidePromotedTrends() {
+    if (!settings.hideAds) return;
+    document.querySelectorAll('div[data-testid="trend"]').forEach(function (el) {
+      if (PROMO_TEXT.test(el.textContent || '')) el.style.display = 'none';
+    });
+  }
 
-      block.dataset.xrHandle = handle;
-
-      const noteObj = getStyleFor(handle);
-      if (!noteObj) return;
-
-      const node = makeTagRow(handle, noteObj);
-      if (insertTagRow(block, node)) badgeOwner.set(block, node);
+  // 关注/粉丝列表、"你可能感兴趣"侧栏、搜索的用户 tab、转发者列表:
+  // 这些用 UserCell,里面没有 User-Name。从 @handle 那个 span 起找纵向容器,
+  // 徽章正好落在 handle 行下面、简介上面。
+  function addNotesToUserCells() {
+    document.querySelectorAll('div[data-testid="UserCell"]').forEach(function (cell) {
+      decorate(cell, 'usercell', function (c) {
+        const span = handleSpanOf(c);
+        return span ? span.parentElement : null;
+      });
     });
   }
 
@@ -398,10 +598,14 @@
   function renderAll() {
     addProfileNote();
     addNotesToTimeline();
+    addNotesToUserCells();
+    sweepNoise();
+    hidePromotedTrends();
   }
 
   function rerender() {
     document.querySelectorAll('.' + TAG_CLASS).forEach(function (n) { n.remove(); });
+    document.querySelectorAll('[data-xr-noise]').forEach(clearNoise);
     document.querySelectorAll('[data-xr-handle]').forEach(function (n) {
       delete n.dataset.xrHandle;
     });
@@ -411,10 +615,26 @@
   /* ============================================================
    * 观察器
    * ============================================================ */
+  // 带上限的防抖。纯 trailing 防抖会被饿死:X 上只要有自动播放的视频、
+  // "显示 N 条新帖"的计数器或者加载中的骨架屏在持续吐 mutation,定时器就一直
+  // 被 clearTimeout 推后,renderAll 永远不执行(症状:滚半天不出药丸,随手一点又好了)。
+  // 距上次执行超过 MAX_WAIT 就强制跑一次。
+  const IDLE_WAIT = 250;
+  const MAX_WAIT = 800;
   let timer = null;
+  let lastRun = 0;
+
+  function runRender() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    lastRun = Date.now();
+    renderAll();
+  }
+
   function schedule() {
+    const waited = Date.now() - lastRun;
+    if (waited >= MAX_WAIT) { runRender(); return; }
     if (timer) clearTimeout(timer);
-    timer = setTimeout(renderAll, 250);
+    timer = setTimeout(runRender, Math.min(IDLE_WAIT, MAX_WAIT - waited));
   }
 
   function watchRouteChange() {
@@ -532,10 +752,11 @@
   async function init() {
     await loadStore();
     watchStorage();
+    applySettings();
     applyTheme(true);
     bindDelegation();          // 先绑委托,后续任何节点都自动生效
     await waitForMain();
-    renderAll();
+    runRender();
     new MutationObserver(schedule).observe(document.body, {
       childList: true,
       subtree: true

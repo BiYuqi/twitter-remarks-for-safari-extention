@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "X Remarks 推特备注",
-  "version": "1.0.0",
-  "description": "在 X(Twitter)的用户名旁显示本地备注,点击即可编辑,支持 JSON 批量导入导出。",
+  "version": "1.1.0",
+  "description": "在 X(Twitter)的用户名旁显示本地备注,点击即可编辑;支持按关键词规则上色、把黑名单作者的推文淡化/折叠/隐藏,以及隐藏推广内容。",
   "permissions": ["storage"],
   "host_permissions": [
     "https://x.com/*",
@@ -31,7 +31,7 @@
         "https://x.com/*",
         "https://twitter.com/*"
       ],
-      "js": ["defaults.js", "content.js"],
+      "js": ["defaults.js", "rules.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }

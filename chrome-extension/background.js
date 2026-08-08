@@ -9,5 +9,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason !== 'install') return;   // 升级不动数据
   const cur = await chrome.storage.local.get(STORAGE_KEY);
   if (cur[STORAGE_KEY]) return;               // 已有数据不覆盖
-  await chrome.storage.local.set({ [STORAGE_KEY]: XR_DEFAULT_REMARKS });
+  const seed = Object.assign({}, XR_DEFAULT_REMARKS);
+  seed.__settings = XR_DEFAULT_SETTINGS;      // 设置和备注同住一份扁平 JSON
+  await chrome.storage.local.set({ [STORAGE_KEY]: seed });
 });
