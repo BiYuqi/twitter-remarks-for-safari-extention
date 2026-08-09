@@ -568,8 +568,11 @@
   // 关注/粉丝列表、"你可能感兴趣"侧栏、搜索的用户 tab、转发者列表:
   // 这些用 UserCell,里面没有 User-Name。从 @handle 那个 span 起找纵向容器,
   // 徽章正好落在 handle 行下面、简介上面。
+  // 注意:UserCell 不一定是 div —— "认识的关注者"(followers_you_follow)这类
+  // 整行可点的列表里,X 把它做成了 <button data-testid="UserCell">,
+  // 之前用 div[data-testid="UserCell"] 选择器会漏掉,导致该页面完全不显示备注。
   function addNotesToUserCells() {
-    document.querySelectorAll('div[data-testid="UserCell"]').forEach(function (cell) {
+    document.querySelectorAll('[data-testid="UserCell"]').forEach(function (cell) {
       decorate(cell, 'usercell', function (c) {
         const span = handleSpanOf(c);
         return span ? span.parentElement : null;

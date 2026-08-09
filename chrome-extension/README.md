@@ -122,6 +122,7 @@ Edge / Brave / Arc 等 Chromium 内核浏览器同样适用。
 17. **弹窗里改一行不要整表重绘**。155 条全量 `render()` 会把滚动位置弹回顶部,改到一半的人得重新找。就地编辑和单条删除都走 DOM 手术(`li.remove()` / 改 `textContent`),只有分组归属变了才整表重排。
 18. **`tabs button.on` 在暗色下必须比底槽更亮**。分段控件的语义是"选中项浮起来",暗色下如果选中态比容器更暗,看着就像没选中。`--seg-bg` / `--seg-on` 两个变量分开定义就是为了这个。
 19. **弹窗的 `:root[data-theme]` 要能压过 `@media (prefers-color-scheme)`**。前者特异度 (0,2,0)、后者 (0,1,0),两个方向都压得住,所以不依赖书写顺序。
+20. **`UserCell` 不保证是 `div`**。大多数列表(关注/粉丝弹层、搜索用户 tab)是 `<div data-testid="UserCell">`,但"认识的关注者"(`/handle/followers_you_follow`)整行可点,X 把它做成了 `<button data-testid="UserCell">`。选择器锁死 `div[data-testid="UserCell"]` 会把这类页面漏掉、备注完全不显示;要用不限标签的 `[data-testid="UserCell"]`。
 
 ## 验证清单(改动后手动过一遍)
 
