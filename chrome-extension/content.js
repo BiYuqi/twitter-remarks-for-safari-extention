@@ -107,7 +107,7 @@
       text: noteText,
       // 单条自定义色 > 规则色 > 全局色 > 跟随主题
       bg: (entry && entry.color) || (rule && rule.color) ||
-        store.__style_bgColor || 'var(--xr-accent,#007aff)',
+        store.__style_bgColor || 'var(--xr-accent,#1d9bf0)',
       fontSize: (entry && entry.fontSize) || store.__style_fontSize || '12px',
       radius: (entry && entry.borderRadius) || store.__style_borderRadius || '6px',
       noise: !!(rule && rule.noise)
@@ -688,9 +688,11 @@
       input: '#f2f2f7',
       inputFg: '#1c1c1e',
       inputBorder: 'rgba(60,60,67,.15)',
-      accent: '#007aff',
-      sec: '#f2f2f7',
-      secFg: '#007aff',
+      // 用 X 自己的品牌蓝,不用 iOS 蓝 —— 两种蓝并置在同一个界面里最难看
+      accent: '#1d9bf0',
+      sec: '#eff3f4',
+      secFg: '#1d9bf0',
+      hover: 'rgba(15,20,25,.06)',
       toastBg: 'rgba(28,28,30,.92)',
       toastFg: '#ffffff'
     },
@@ -705,9 +707,10 @@
       input: '#2c2c2e',
       inputFg: '#ffffff',
       inputBorder: 'rgba(84,84,88,.5)',
-      accent: '#0a84ff',
+      accent: '#1d9bf0',
       sec: '#2c2c2e',
-      secFg: '#0a84ff',
+      secFg: '#1d9bf0',
+      hover: 'rgba(239,243,244,.1)',
       toastBg: 'rgba(58,58,60,.95)',
       toastFg: '#ffffff'
     }
@@ -735,6 +738,22 @@
     root.setProperty('--xr-sec-fg', T.secFg);
     root.setProperty('--xr-toast-bg', T.toastBg);
     root.setProperty('--xr-toast-fg', T.toastFg);
+    root.setProperty('--xr-hover', T.hover);
+    publishTheme(mode);
+  }
+
+  /* 把当前主题告诉弹窗 —— 弹窗自己是独立页面,读不到 X 的 data-theme,
+   * 只能跟系统的 prefers-color-scheme。你在系统浅色下用 X 的暗色模式时,
+   * 两边就会一黑一白。单独存一个 key,不进 STORAGE_KEY,导出的 JSON 不受影响。 */
+  const THEME_KEY = 'x_remarks_theme';
+  let publishedTheme = '';
+  function publishTheme(mode) {
+    if (mode === publishedTheme) return;
+    publishedTheme = mode;
+    try {
+      const p = chrome.storage.local.set({ [THEME_KEY]: mode });
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
   }
 
   /* ============================================================

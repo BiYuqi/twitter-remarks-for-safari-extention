@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <link rel="stylesheet" href="popup.css" />
-  <title>X Remarks</title>
+  <title>推特备注</title>
 </head>
 <body>
   <header>
@@ -17,26 +17,34 @@
 
   <!-- 备注列表 -->
   <section id="view-list">
-    <div class="add-row">
-      <input id="new-handle" type="text" placeholder="@handle" autocomplete="off" spellcheck="false" />
-      <input id="new-note" type="text" placeholder="备注" autocomplete="off" spellcheck="false" />
-      <button id="add" type="button">添加</button>
-    </div>
-
     <div class="toolbar">
       <input id="search" type="search" placeholder="搜索 handle 或备注" autocomplete="off" />
-      <button id="group" class="ghost" type="button" title="按备注文案分组">分组</button>
+      <button id="group" class="ghost" type="button" title="按备注文案分组,人多的排前面">分组</button>
+      <button id="add-toggle" class="ghost" type="button" title="手动添加一条备注">＋ 添加</button>
+    </div>
+
+    <div class="add-row" id="add-row" hidden>
+      <input id="new-handle" type="text" placeholder="@handle 或主页链接" autocomplete="off" spellcheck="false" />
+      <input id="new-note" type="text" placeholder="备注" autocomplete="off" spellcheck="false" />
+      <button id="add" type="button">保存</button>
+    </div>
+
+    <div class="filter-bar" id="filter-bar" hidden>
+      <span class="f-dot" id="filter-dot"></span>
+      <span class="f-text" id="filter-text"></span>
+      <button id="filter-clear" type="button" title="取消筛选">✕</button>
     </div>
 
     <ul id="list"></ul>
-    <div id="empty" class="empty" hidden>没有匹配的备注</div>
+    <div id="empty" class="empty" hidden></div>
   </section>
 
   <!-- 规则 -->
   <section id="view-rules" hidden>
     <div class="tip">
-      备注文案命中关键词就套用这条规则的颜色;勾了「降噪」的,这类人的推文会按
-      <b>设置 → 降噪方式</b> 处理。<b>从上往下匹配,第一条命中的生效</b>,所以拉黑类要放前面。
+      备注里出现关键词就套用这条规则的颜色。勾了<b>降噪</b>的,这类人的推文会按
+      <b>设置 → 降噪方式</b> 处理。<b>从上往下匹配,第一条命中的生效</b> —— 拉黑类放最前面。
+      点右边的人数可以只看这一类人。
     </div>
     <div id="rules"></div>
     <footer>
@@ -48,12 +56,12 @@
   <!-- 设置 -->
   <section id="view-settings" hidden>
     <div class="field">
-      <label for="noise-mode">降噪方式</label>
+      <label for="noise-mode">降噪方式 <span class="muted">—— 怎么处理「降噪」规则命中的人发的推文</span></label>
       <select id="noise-mode">
-        <option value="off">关闭 —— 只标颜色</option>
-        <option value="dim">淡化 —— 变灰变淡,鼠标移上去恢复</option>
-        <option value="collapse">折叠 —— 收成一行,点开才看</option>
-        <option value="hide">隐藏 —— 整条不显示</option>
+        <option value="off">关闭(只给备注上色)</option>
+        <option value="dim">淡化(变灰,鼠标移上去恢复)</option>
+        <option value="collapse">折叠(收成一行,点开才看)</option>
+        <option value="hide">隐藏(整条不显示)</option>
       </select>
     </div>
 
@@ -69,7 +77,7 @@
 
     <div class="sep"></div>
 
-    <div class="tip">备份 —— 每次「整体替换」前自动存一份,保留最近 3 份</div>
+    <div class="tip">备份 —— 导入文件 / JSON 保存 / 回滚前自动存档,保留最近 3 份</div>
     <ul id="snaps" class="snaps"></ul>
 
     <div class="sep"></div>
@@ -78,17 +86,17 @@
       <button id="export" class="sec" type="button">导出文件</button>
       <button id="import" class="sec" type="button">导入文件</button>
       <button id="copy" class="sec" type="button">复制 JSON</button>
-      <button id="to-json" class="sec" type="button" title="直接编辑 JSON">{ }</button>
+      <button id="to-json" class="sec" type="button" title="直接编辑整份 JSON">编辑 JSON</button>
       <input id="file" type="file" accept="application/json,.json" hidden />
     </footer>
   </section>
 
   <!-- JSON 视图 -->
   <section id="view-json" hidden>
-    <div class="tip">整份数据的 JSON(含 <code>__settings</code>),可直接改。保存会<b>整体替换</b>现有数据,替换前会自动存一份备份。</div>
+    <div class="tip">整份数据的 JSON(含 <code>__settings</code>),可直接改。保存会<b>整体替换</b>现有数据,替换前自动存一份备份。</div>
     <textarea id="json" spellcheck="false"></textarea>
     <footer>
-      <button id="json-save" type="button">保存导入</button>
+      <button id="json-save" type="button">保存并替换</button>
       <button id="json-cancel" class="sec" type="button">返回</button>
     </footer>
   </section>

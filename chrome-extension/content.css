@@ -85,7 +85,7 @@
   appearance: none;
 }
 #xr-edit input:focus {
-  border-color: var(--xr-accent, #007aff) !important;
+  border-color: var(--xr-accent, #1d9bf0) !important;
 }
 
 #xr-edit .row {
@@ -103,7 +103,7 @@
   font-size: 14px !important;
   font-weight: 600 !important;
   color: #fff !important;
-  background: var(--xr-accent, #007aff) !important;
+  background: var(--xr-accent, #1d9bf0) !important;
   box-sizing: border-box !important;
   margin: 0 !important;
   font-family: inherit !important;
@@ -120,7 +120,7 @@
 #xr-edit .row button:active { opacity: .6; }
 #xr-edit .row button.sec {
   background: var(--xr-sec, #f2f2f7) !important;
-  color: var(--xr-sec-fg, #007aff) !important;
+  color: var(--xr-sec-fg, #1d9bf0) !important;
 }
 
 /* ---- toast ---- */
@@ -184,7 +184,7 @@ article.xr-collapsed {
   z-index: 9999;
   user-select: none;
 }
-.xr-fold-bar:hover { background: rgba(127, 127, 127, .08); }
+.xr-fold-bar:hover { background: var(--xr-hover, rgba(127, 127, 127, .08)); }
 .xr-fold-bar:active { opacity: .6; }
 .xr-fold-bar .h {
   font-weight: 700;
@@ -198,7 +198,7 @@ article.xr-collapsed {
 .xr-fold-bar .n {
   flex: 0 1 auto;
   min-width: 0;
-  background: var(--xr-accent, #007aff);
+  background: var(--xr-accent, #1d9bf0);
   color: #fff;
   font-weight: 700;
   font-size: 12px;
@@ -212,7 +212,7 @@ article.xr-collapsed {
   margin-left: auto;
   flex: 0 0 auto;
   font-size: 12px;
-  color: var(--xr-accent, #007aff);
+  color: var(--xr-accent, #1d9bf0);
 }
 
 /* ============================================================

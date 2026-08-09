@@ -173,19 +173,19 @@ var XR_DEFAULT_SETTINGS = {
   rules: [
     {
       name: '拉黑',
-      color: '#ff3b30',
+      color: '#f4212e',
       noise: true,
       match: ['避而远之', '割人', '骗子', '诈骗', '反指', '大割', '畜生', '小心']
     },
     {
       name: '项目方',
-      color: '#8e8e93',
+      color: '#71767b',
       noise: false,
       match: ['创始人', 'CEO', '项目方', '台子', '合伙人', 'dev', '开发']
     },
     {
       name: '投研',
-      color: '#34c759',
+      color: '#00ba7c',
       noise: false,
       match: ['投研', '研究', '分析', 'alpha', 'kol', '交易']
     }
