@@ -149,13 +149,19 @@
  * 让 article 塌成 0 高度,X 的 ResizeObserver 会自己把位置重排。
  * ============================================================ */
 
-/* 淡化:鼠标移上去恢复,想看还是能看 */
-article.xr-dim {
+/* 作者、正文和备注默认模糊淡化,移入推文恢复清晰,移出后恢复模糊。
+ * 不在视频及其祖先上设置 opacity/filter。
+ */
+article.xr-dim [data-testid="User-Name"],
+article.xr-dim [data-testid="tweetText"],
+article.xr-dim .xr-note-tag {
   opacity: var(--xr-dim, .32);
-  filter: grayscale(.55);
+  filter: grayscale(.55) blur(3px);
   transition: opacity .15s, filter .15s;
 }
-article.xr-dim:hover {
+article.xr-dim:hover [data-testid="User-Name"],
+article.xr-dim:hover [data-testid="tweetText"],
+article.xr-dim:hover .xr-note-tag {
   opacity: 1;
   filter: none;
 }
