@@ -313,6 +313,35 @@
     return row;
   }
 
+  // 转帖头部专用:和"已转帖"同一行并排显示,不单独占一行(那一行本身很窄,
+  // 独占一行的块级徽章在这里没必要,用户要的是紧跟在文字后面)。
+  function makeInlineTagRow(username, noteObj) {
+    const row = document.createElement('span');
+    row.className = TAG_CLASS;
+    row.dataset.handle = username;
+    row.dataset.xrFor = username;
+    row.style.cssText =
+      'display:inline-flex;vertical-align:middle;margin-left:6px;' +
+      'position:relative;z-index:9998;';
+
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.dataset.xrEdit = username;
+    pill.title = '点击编辑备注';
+    pill.textContent = noteObj.text;
+    pill.style.cssText =
+      'display:inline-block;background:' + noteObj.bg + ';color:#fff;font-weight:700;' +
+      'font-size:' + noteObj.fontSize + ';padding:2px 8px;border-radius:' + noteObj.radius + ';' +
+      'white-space:nowrap;text-align:left;' +
+      'border:none;margin:0;font-family:inherit;line-height:1.35;' +
+      'cursor:pointer;position:relative;z-index:9999;pointer-events:auto;' +
+      '-webkit-appearance:none;appearance:none;user-select:none;';
+
+    bindDirect(pill, username);
+    row.appendChild(pill);
+    return row;
+  }
+
   function makeAddRow(username) {
     const row = document.createElement('div');
     row.className = TAG_CLASS;
@@ -523,8 +552,8 @@
     // 留着 data-xr-noise,下次 rerender 还能被清理到
   }
 
-  function decorate(block, ctx, anchorFn) {
-    const handle = handleOf(block);
+  function decorate(block, ctx, anchorFn, handleFn) {
+    const handle = handleFn ? handleFn(block) : handleOf(block);
     if (!handle) return;
     if (block.dataset.xrHandle === handle) return;
 
@@ -538,6 +567,28 @@
     const noteObj = getStyleFor(handle);
     // 注意:noteObj 为空也要走一遍,否则回收复用的节点会留着上一位的降噪状态
     if (ctx === 'timeline') applyNoise(block, handle, noteObj);
+
+    if (ctx === 'socialContext') {
+      // "已转帖"文字用 -webkit-line-clamp 做省略,那个 span 本身是块级盒子,
+      // 插进它的父级 <a> 后依然会被挤到下一行 —— <a> 默认不是 flex,
+      // 必须显式把 <a> 设成 display:flex,徽章才会和文字在同一行排开。
+      // 节点被虚拟列表回收复用、换成没有备注的人时,也要把强制样式撤掉。
+      const link = block.closest('a[href]') || block;
+      if (!noteObj) {
+        link.style.display = '';
+        link.style.alignItems = '';
+        link.style.flexWrap = '';
+        return;
+      }
+      link.style.display = 'flex';
+      link.style.alignItems = 'center';
+      link.style.flexWrap = 'wrap';
+      const node = makeInlineTagRow(handle, noteObj);
+      link.appendChild(node);
+      badgeOwner.set(block, node);
+      return;
+    }
+
     if (!noteObj) return;
 
     const anchor = (anchorFn && anchorFn(block)) || block;
@@ -548,6 +599,21 @@
   function addNotesToTimeline() {
     document.querySelectorAll('div[data-testid="User-Name"]').forEach(function (block) {
       decorate(block, 'timeline');
+    });
+  }
+
+  // 转帖头部("XX 已转帖"):data-testid="socialContext" 挂在一个 <span> 上
+  // (不是 div,选择器不能锁标签),块本身没有 <a>——链接是它的外层祖先,
+  // 要从祖先取 href,不能像别处那样往子节点里找。之前两处都没对上,
+  // 导致转帖者的备注完全不显示。只标转帖者本人,不碰降噪(降噪只认作者的 User-Name)。
+  function socialContextHandle(block) {
+    const a = block.closest('a[href]');
+    return a ? handleFromHref(a.getAttribute('href')) : null;
+  }
+
+  function addNotesToSocialContext() {
+    document.querySelectorAll('[data-testid="socialContext"]').forEach(function (block) {
+      decorate(block, 'socialContext', null, socialContextHandle);
     });
   }
 
@@ -601,6 +667,7 @@
   function renderAll() {
     addProfileNote();
     addNotesToTimeline();
+    addNotesToSocialContext();
     addNotesToUserCells();
     sweepNoise();
     hidePromotedTrends();
