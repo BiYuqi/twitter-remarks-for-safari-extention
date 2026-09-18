@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "推特备注 X Remarks",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "在 X(推特)用户名旁显示本地备注,按关键词自动上色,可淡化 / 折叠黑名单作者的推文。",
   "permissions": ["storage"],
   "host_permissions": [

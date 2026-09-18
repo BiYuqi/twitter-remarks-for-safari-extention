@@ -225,4 +225,9 @@ article.xr-collapsed {
  * 推广内容:信息流里的推广推文外层挂着 placementTracking
  * 同样只收内层,让 cell 自己塌下去
  * ============================================================ */
-html.xr-hide-ads div[data-testid="placementTracking"] { display: none !important; }
+/* placementTracking 也可能位于视频内部。只隐藏包含整条推文的推广容器,
+ * 排除推文内部和播放器内部的跟踪容器,避免画面隐藏后音频仍播放。
+ */
+html.xr-hide-ads div[data-testid="placementTracking"]:has(article[data-testid="tweet"]):not(article *):not([data-testid="videoPlayer"] *):not([data-testid="videoComponent"] *) {
+  display: none !important;
+}
