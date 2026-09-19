@@ -647,6 +647,59 @@
   }
 
   /* ============================================================
+   * 悬停卡片:鼠标移到头像/用户名上弹出的小卡片(HoverCard)
+   * 它是渲染在 #layers 里的浮层,里面既没有 User-Name 也没有 UserCell,
+   * 所以要单独处理。有备注显示药丸,没有备注显示「＋ 备注」,不用再跳个人主页。
+   * 卡片内容是异步加载的:handle 行还没出来就先不动,下一轮渲染再来;
+   * 卡片里的节点被 React 重绘掉徽章时,同样靠下一轮渲染补回。
+   * ============================================================ */
+
+  // 卡片里第一个指向用户主页的链接就是头像/名字,简介里的 @别人 排在后面
+  function hoverCardHandle(card) {
+    const links = card.querySelectorAll('a[href]');
+    for (let i = 0; i < links.length; i++) {
+      const h = handleFromHref(links[i].getAttribute('href'));
+      if (h) return h;
+    }
+    return null;
+  }
+
+  // 只认文字恰好等于该 handle 的 span,不能用 handleSpanOf(取最后一个 @ 开头的),
+  // 否则简介里的 @提及 会被当成 handle 行
+  function hoverCardHandleSpan(card, handle) {
+    const want = handle.toLowerCase();
+    const spans = card.querySelectorAll('span');
+    for (let i = 0; i < spans.length; i++) {
+      if ((spans[i].textContent || '').trim().toLowerCase() === want) return spans[i];
+    }
+    return null;
+  }
+
+  function addNotesToHoverCards() {
+    document.querySelectorAll('[data-testid="HoverCard"]').forEach(function (card) {
+      const handle = hoverCardHandle(card);
+      if (!handle) return;
+      const span = hoverCardHandleSpan(card, handle);
+      if (!span) return;
+
+      const old = badgeOwner.get(card);
+      if (card.dataset.xrHandle === handle && old && old.isConnected && card.contains(old)) return;
+
+      // 卡片节点复用成另一个人,或徽章被重绘掉了:先清旧的再插
+      if (old) old.remove();
+      badgeOwner.delete(card);
+      card.dataset.xrHandle = handle;
+
+      const noteObj = getStyleFor(handle);
+      const node = noteObj ? makeTagRow(handle, noteObj) : makeAddRow(handle);
+      // 锚在 handle 所在的链接上,徽章落在那一行下面、简介上面,不会插进 <a> 里面
+      const link = span.closest('a[href]');
+      const anchor = link && card.contains(link) ? link : span.parentElement;
+      if (insertTagRow(anchor, node, 'hovercard')) badgeOwner.set(card, node);
+    });
+  }
+
+  /* ============================================================
    * 个人主页:唯一编辑入口
    * ============================================================ */
   function addProfileNote() {
@@ -669,6 +722,7 @@
     addNotesToTimeline();
     addNotesToSocialContext();
     addNotesToUserCells();
+    addNotesToHoverCards();
     sweepNoise();
     hidePromotedTrends();
   }
