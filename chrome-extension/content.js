@@ -161,6 +161,53 @@
    * 不用 window.prompt:它会阻塞页面、样式不可控,而且和 X 的键盘快捷键打架。
    */
   let editBox = null, editInput = null, editTitle = null, editTarget = null;
+  let editTagsWrap = null, editTagsList = null;
+
+  /* ---------- 已有标签(所有人用过的备注文案去重,按使用人数排序) ----------
+   * 备注本身就是"标签",多个标签用逗号拼进同一条备注即可 —— rules.js 是子串匹配,
+   * 拼接不影响颜色/降噪规则命中。
+   */
+  function getExistingTags() {
+    const counts = new Map();
+    for (const k of Object.keys(store)) {
+      if (!k.startsWith('@')) continue;
+      const v = store[k];
+      const text = ((typeof v === 'string' ? v : (v && v.note)) || '').trim();
+      if (!text) continue;
+      counts.set(text, (counts.get(text) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort(function (a, b) { return b[1] - a[1] || a[0].localeCompare(b[0]); })
+      .map(function (e) { return e[0]; });
+  }
+
+  function splitTags(text) {
+    return (text || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  function toggleTag(tag) {
+    const list = splitTags(editInput.value);
+    const i = list.indexOf(tag);
+    if (i >= 0) list.splice(i, 1); else list.push(tag);
+    editInput.value = list.join(', ');
+    renderTagChips();
+  }
+
+  function renderTagChips() {
+    if (!editTagsList) return;
+    const tags = getExistingTags();
+    editTagsWrap.style.display = tags.length ? '' : 'none';
+    editTagsList.textContent = '';
+    const current = splitTags(editInput.value);
+    tags.forEach(function (t) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip' + (current.indexOf(t) >= 0 ? ' on' : '');
+      chip.dataset.etag = t;
+      chip.textContent = t;
+      editTagsList.appendChild(chip);
+    });
+  }
 
   function buildEditor() {
     editBox = document.createElement('div');
@@ -169,6 +216,10 @@
       '<div class="box">' +
       '<div class="t"></div>' +
       '<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" />' +
+      '<div class="tags-wrap">' +
+      '<div class="tags-label">已有标签(点击添加/取消):</div>' +
+      '<div class="tags"></div>' +
+      '</div>' +
       '<div class="row">' +
       '<button type="button" data-eact="save">保存</button>' +
       '<button type="button" class="sec" data-eact="del">删除</button>' +
@@ -177,9 +228,13 @@
     document.body.appendChild(editBox);
     editInput = editBox.querySelector('input');
     editTitle = editBox.querySelector('.t');
+    editTagsWrap = editBox.querySelector('.tags-wrap');
+    editTagsList = editBox.querySelector('.tags');
 
     editBox.addEventListener('click', function (e) {
       if (e.target === editBox) { closeEditor(); return; }
+      const chip = e.target.closest && e.target.closest('[data-etag]');
+      if (chip) { e.stopPropagation(); toggleTag(chip.dataset.etag); return; }
       const b = e.target.closest && e.target.closest('[data-eact]');
       if (!b) return;
       e.stopPropagation();
@@ -197,6 +252,7 @@
       editBox.addEventListener(type, function (e) { e.stopPropagation(); }, true);
     });
 
+    editInput.addEventListener('input', renderTagChips);
     editInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         const u = editTarget, v = editInput.value;
@@ -221,6 +277,7 @@
     const cur = getStyleFor(username);
     editTitle.textContent = '备注 ' + username;
     editInput.value = cur ? cur.text : '';
+    renderTagChips();
     editBox.style.display = 'flex';
     setTimeout(function () {
       try { editInput.focus(); editInput.select(); } catch (e) {}
