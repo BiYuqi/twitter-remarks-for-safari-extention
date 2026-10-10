@@ -637,7 +637,7 @@
    * X 自己的 ResizeObserver 会把位置重排,空隙自然合上(广告拦截器也是这么干的)。
    */
   function clearNoise(article) {
-    article.classList.remove('xr-dim', 'xr-hidden', 'xr-collapsed');
+    delete article.dataset.xrMode;
     const bar = article.querySelector(':scope > .xr-fold-bar');
     if (bar) bar.remove();
     delete article.dataset.xrNoise;
@@ -679,10 +679,12 @@
     if (!noteObj || !noteObj.noise || mode === 'off') return;
 
     article.dataset.xrNoise = handle;
-    if (mode === 'hide') { article.classList.add('xr-hidden'); return; }
-    if (mode === 'dim') { article.classList.add('xr-dim'); return; }
+    // 状态用 data 属性而不是 class:X 的 article 悬停时会重渲染并整体重写 className,
+    // 加上去的 class 会被冲掉(症状:淡化的推文移入后恢复清晰,移走不再淡化)
+    if (mode === 'hide') { article.dataset.xrMode = 'hidden'; return; }
+    if (mode === 'dim') { article.dataset.xrMode = 'dim'; return; }
     if (mode === 'collapse') {
-      article.classList.add('xr-collapsed');
+      article.dataset.xrMode = 'collapsed';
       article.appendChild(makeFoldBar(handle, noteObj));
     }
   }
@@ -698,7 +700,7 @@
   function expandArticle(el) {
     const article = el.closest('article');
     if (!article) return;
-    article.classList.remove('xr-collapsed');
+    delete article.dataset.xrMode;
     const bar = article.querySelector(':scope > .xr-fold-bar');
     if (bar) bar.remove();
     // 留着 data-xr-noise,下次 rerender 还能被清理到

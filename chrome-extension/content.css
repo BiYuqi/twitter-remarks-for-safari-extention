@@ -224,28 +224,29 @@
 
 /* 作者、正文和备注默认模糊淡化,移入推文恢复清晰,移出后恢复模糊。
  * 不在视频及其祖先上设置 opacity/filter。
+ * 状态挂在 data-xr-mode 上:X 悬停时会整体重写 article 的 className,class 会丢。
  */
-article.xr-dim [data-testid="User-Name"],
-article.xr-dim [data-testid="tweetText"],
-article.xr-dim .xr-note-tag {
+article[data-xr-mode="dim"] [data-testid="User-Name"],
+article[data-xr-mode="dim"] [data-testid="tweetText"],
+article[data-xr-mode="dim"] .xr-note-tag {
   opacity: var(--xr-dim, .32);
   filter: grayscale(.55) blur(3px);
   transition: opacity .15s, filter .15s;
 }
-article.xr-dim:hover [data-testid="User-Name"],
-article.xr-dim:hover [data-testid="tweetText"],
-article.xr-dim:hover .xr-note-tag {
+article[data-xr-mode="dim"]:hover [data-testid="User-Name"],
+article[data-xr-mode="dim"]:hover [data-testid="tweetText"],
+article[data-xr-mode="dim"]:hover .xr-note-tag {
   opacity: 1;
   filter: none;
 }
 
 /* 隐藏 */
-article.xr-hidden { display: none !important; }
+article[data-xr-mode="hidden"] { display: none !important; }
 
 /* 折叠:藏起 X 自己的内容,只留我们那条 bar */
-article.xr-collapsed > * { display: none !important; }
-article.xr-collapsed > .xr-fold-bar { display: flex !important; }
-article.xr-collapsed {
+article[data-xr-mode="collapsed"] > * { display: none !important; }
+article[data-xr-mode="collapsed"] > .xr-fold-bar { display: flex !important; }
+article[data-xr-mode="collapsed"] {
   padding: 0 !important;
   border-bottom: none !important;
 }

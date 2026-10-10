@@ -132,6 +132,8 @@ Edge / Brave / Arc 等 Chromium 内核浏览器同样适用。
 
 21. **悬停卡片是异步加载的浮层**(`HoverCard`,在 `#layers` 里,不在 `main` 里)。handle 行没出来时不能打 `data-xr-handle` 标记,否则这次就永远补不上;取 handle 用卡片里第一个主页链接,定位 handle 行只认文字恰好等于该 handle 的 span,别用 `handleSpanOf`(简介里的 `@提及` 会被当成 handle 行)。
 
+22. **降噪状态挂 `data-xr-mode`,不要往 `article` 上加 class**。X 的推文悬停时会重渲染并整体重写 `className`,加上去的 `xr-dim` 等 class 会被冲掉,而 `data-xr-handle` 还在、`decorate` 不会重跑(症状:淡化的推文移入后恢复清晰,移走不再淡化)。React 不管理的 data 属性不受影响。
+
 ## 验证清单(改动后手动过一遍)
 
 - [ ] 时间线:有备注的用户显示药丸,独占一行,不挤压用户名
