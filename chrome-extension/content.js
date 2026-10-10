@@ -162,6 +162,7 @@
    */
   let editBox = null, editInput = null, editTitle = null, editTarget = null;
   let editTagsWrap = null, editTagsList = null;
+  let editSuggest = null, suggestItems = [], suggestActive = -1;
 
   /* ---------- 已有标签(所有人用过的备注文案去重,按使用人数排序) ----------
    * 备注本身就是"标签",多个标签用逗号拼进同一条备注即可 —— rules.js 是子串匹配,
@@ -172,9 +173,11 @@
     for (const k of Object.keys(store)) {
       if (!k.startsWith('@')) continue;
       const v = store[k];
-      const text = ((typeof v === 'string' ? v : (v && v.note)) || '').trim();
-      if (!text) continue;
-      counts.set(text, (counts.get(text) || 0) + 1);
+      const text = (typeof v === 'string' ? v : (v && v.note)) || '';
+      // "a, b" 这类拼接备注拆成单个标签分别计数
+      new Set(splitTags(text)).forEach(function (t) {
+        counts.set(t, (counts.get(t) || 0) + 1);
+      });
     }
     return Array.from(counts.entries())
       .sort(function (a, b) { return b[1] - a[1] || a[0].localeCompare(b[0]); })
@@ -182,7 +185,7 @@
   }
 
   function splitTags(text) {
-    return (text || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    return (text || '').split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
   }
 
   function toggleTag(tag) {
@@ -209,13 +212,79 @@
     });
   }
 
+  /* ---------- 输入联想:按当前正在输入的那一段(最后一个逗号之后)匹配已有标签 ---------- */
+  function currentSegment() {
+    const v = editInput.value;
+    const i = Math.max(v.lastIndexOf(','), v.lastIndexOf('，'));
+    return v.slice(i + 1).trim();
+  }
+
+  function renderSuggest() {
+    if (!editSuggest) return;
+    const q = currentSegment().toLowerCase();
+    suggestItems = [];
+    suggestActive = -1;
+    if (q) {
+      const used = splitTags(editInput.value);
+      used.pop(); // 最后一段就是正在输入的 q,本身不算"已用"
+      const prefix = [], contains = [];
+      getExistingTags().forEach(function (t) {
+        if (used.indexOf(t) >= 0) return;
+        const lt = t.toLowerCase();
+        if (lt === q) return; // 已经完整输入,不必再提示
+        const i = lt.indexOf(q);
+        if (i === 0) prefix.push(t); else if (i > 0) contains.push(t);
+      });
+      suggestItems = prefix.concat(contains).slice(0, 8);
+    }
+    editSuggest.textContent = '';
+    suggestItems.forEach(function (t, i) {
+      const item = document.createElement('div');
+      item.className = 'opt';
+      item.dataset.esug = String(i);
+      item.textContent = t;
+      editSuggest.appendChild(item);
+    });
+    editSuggest.style.display = suggestItems.length ? '' : 'none';
+  }
+
+  function hideSuggest() {
+    suggestItems = [];
+    suggestActive = -1;
+    if (editSuggest) editSuggest.style.display = 'none';
+  }
+
+  function moveSuggest(d) {
+    const n = suggestItems.length;
+    suggestActive = (suggestActive + d + n + 2) % (n + 1) - 1; // -1 表示不选中
+    Array.prototype.forEach.call(editSuggest.children, function (el, i) {
+      el.classList.toggle('on', i === suggestActive);
+      if (i === suggestActive) el.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  function pickSuggest(i) {
+    const tag = suggestItems[i];
+    if (!tag) return;
+    const list = splitTags(editInput.value);
+    list.pop(); // 用选中的标签替换正在输入的那一段
+    if (list.indexOf(tag) < 0) list.push(tag);
+    editInput.value = list.join(', ');
+    hideSuggest();
+    renderTagChips();
+    try { editInput.focus(); } catch (e) {}
+  }
+
   function buildEditor() {
     editBox = document.createElement('div');
     editBox.id = 'xr-edit';
     editBox.innerHTML =
       '<div class="box">' +
       '<div class="t"></div>' +
+      '<div class="input-wrap">' +
       '<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" />' +
+      '<div class="suggest" style="display:none"></div>' +
+      '</div>' +
       '<div class="tags-wrap">' +
       '<div class="tags-label">已有标签(点击添加/取消):</div>' +
       '<div class="tags"></div>' +
@@ -230,9 +299,13 @@
     editTitle = editBox.querySelector('.t');
     editTagsWrap = editBox.querySelector('.tags-wrap');
     editTagsList = editBox.querySelector('.tags');
+    editSuggest = editBox.querySelector('.suggest');
 
     editBox.addEventListener('click', function (e) {
       if (e.target === editBox) { closeEditor(); return; }
+      const opt = e.target.closest && e.target.closest('[data-esug]');
+      if (opt) { e.stopPropagation(); pickSuggest(+opt.dataset.esug); return; }
+      if (!(e.target.closest && e.target.closest('.input-wrap'))) hideSuggest();
       const chip = e.target.closest && e.target.closest('[data-etag]');
       if (chip) { e.stopPropagation(); toggleTag(chip.dataset.etag); return; }
       const b = e.target.closest && e.target.closest('[data-eact]');
@@ -252,8 +325,29 @@
       editBox.addEventListener(type, function (e) { e.stopPropagation(); }, true);
     });
 
-    editInput.addEventListener('input', renderTagChips);
+    // 点下拉项时先阻止 input 失焦,避免列表在 click 前被 blur 收起
+    editSuggest.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    editInput.addEventListener('input', function () { renderTagChips(); renderSuggest(); });
+    editInput.addEventListener('blur', function () { setTimeout(hideSuggest, 150); });
     editInput.addEventListener('keydown', function (e) {
+      if (e.isComposing || e.keyCode === 229) return; // 中文输入法选词中的回车不处理
+      const open = suggestItems.length > 0;
+      if (open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault();
+        moveSuggest(e.key === 'ArrowDown' ? 1 : -1);
+        return;
+      }
+      if (open && suggestActive >= 0 && (e.key === 'Enter' || e.key === 'Tab')) {
+        e.preventDefault();
+        pickSuggest(suggestActive);
+        return;
+      }
+      if (open && e.key === 'Tab') {
+        e.preventDefault();
+        pickSuggest(0);
+        return;
+      }
+      if (open && e.key === 'Escape') { hideSuggest(); return; }
       if (e.key === 'Enter') {
         const u = editTarget, v = editInput.value;
         closeEditor();
@@ -268,6 +362,7 @@
   function closeEditor() {
     if (editBox) editBox.style.display = 'none';
     editTarget = null;
+    hideSuggest();
   }
 
   function promptEdit(username) {
