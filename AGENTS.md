@@ -19,7 +19,7 @@
 ## 共用 DOM 与事件约束
 
 1. X 是 React SPA + 虚拟列表，DOM 会持续替换和回收。保持 `badgeOwner` WeakMap 的所有者清理，防止备注串号。
-2. 使用 `data-testid`，不依赖混淆 class。时间线为 `User-Name`，个人主页为 `UserName`；Chrome 用户列表用不限标签的 `[data-testid="UserCell"]`。
+2. 使用 `data-testid`，不依赖混淆 class。时间线为 `User-Name`，个人主页为 `UserName`；用户列表用不限标签的 `[data-testid="UserCell"]`。
 3. 徽章通过 `findColumnSlot` 独占一行，不挤压用户名的定宽 flex 行。
 4. 全局事件委托挂 `window`，避免 X 在 `document` 上先拦截。元素监听只作兜底，不能成为唯一通路。
 5. `touchstart` / `pointerdown` 只拦传播，不 `preventDefault()`；否则 Safari 可能不产生 click。拦截范围限制在扩展自己的交互元素。
