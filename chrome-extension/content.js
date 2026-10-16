@@ -529,7 +529,7 @@
   function handleFromHref(href) {
     if (!href) return null;
     const m = String(href).match(
-      /^(?:https?:\/\/(?:www\.)?(?:x|twitter)\.com)?\/([A-Za-z0-9_]{1,15})(?:[/?#]|$)/
+      /^(?:https?:\/\/(?:(?:www|pro)\.)?(?:x|twitter)\.com)?\/([A-Za-z0-9_]{1,15})(?:[/?#]|$)/
     );
     if (!m) return null;
     if (RESERVED_PATHS.has(m[1].toLowerCase())) return null;
@@ -1038,9 +1038,13 @@
    * 启动
    * ============================================================ */
   function waitForMain() {
+    const waitStart = Date.now();
     return new Promise(function (resolve) {
       (function check() {
-        if (document.querySelector('main')) resolve();
+        // pro.x.com(X Pro / TweetDeck)多列布局不一定有 main,
+        // 出现推文或用户卡片也视为就绪,最多等 10 秒,之后交给 MutationObserver
+        if (document.querySelector('main, [data-testid="tweet"], [data-testid="UserCell"]') ||
+            Date.now() - waitStart > 10000) resolve();
         else setTimeout(check, 200);
       })();
     });

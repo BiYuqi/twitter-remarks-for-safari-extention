@@ -99,7 +99,7 @@ Edge / Brave / Arc 等 Chromium 内核浏览器同样适用。
 
 | 文件 | 职责 |
 |---|---|
-| `manifest.json` | MV3 清单,只申请 `storage` 权限 + x.com/twitter.com 主机权限 |
+| `manifest.json` | MV3 清单,只申请 `storage` 权限 + x.com/pro.x.com/twitter.com 主机权限 |
 | `defaults.js` | 内置备注数据 + 默认设置/规则,content script 和 service worker 共用 |
 | `rules.js` | 规则匹配,内容脚本和弹窗共用同一份实现 |
 | `background.js` | 仅在首次安装时把内置数据和默认设置写进 storage |
@@ -171,6 +171,14 @@ Edge / Brave / Arc 等 Chromium 内核浏览器同样适用。
 ### 更新扩展
 
 保留原目录并更新文件，在扩展管理页点「重新加载」，再刷新 X 标签页。不要通过卸载重装更新，以免丢失扩展存储。更新默认数据不会覆盖已有备注。
+
+### 1.2.2 支持 X Pro(pro.x.com)
+
+- 内容脚本和主机权限新增 `https://pro.x.com/*`;解析用户链接时识别 `pro.x.com` 域名。
+- X Pro 多列布局不一定有 `main`,启动时出现推文或用户卡片即开始渲染。
+- 更新后需在扩展管理页「重新加载」,Chrome 可能提示新增站点权限,再刷新 pro.x.com 页面。
+
+pro.x.com 上的实际显示效果尚待真机验证。
 
 ### 1.2.1 视频显示修复
 
